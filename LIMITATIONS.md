@@ -1,4 +1,4 @@
-# MVP-0 limitations
+﻿# MVP-0 limitations
 
 - Linux x86-64 ELF and SIGSEGV only; parser expects Linux x86-64 core note layouts.
 - Controlled cases only; the supplied workspace did not have Linux/WSL or GDB, so no ELF/core artifacts or wheelhouse were generated here. The Linux build script is provided.
@@ -9,3 +9,5 @@
 - NT_FILE external module build-ID validation and module byte lookup are not implemented; missing module bytes must be treated as gaps.
 - Effective address handling covers simple x86-64 base/index/scale/displacement and RIP-relative forms; unsupported segmented operands remain uncomputed.
 - The verifier's mapping checks use dumped PT_LOAD ranges only, so absence from a core snapshot does not prove process-level unmapped status.
+- The offline gallery reports cases whose ELF/core artifacts are present. Missing artifact pairs are shown as UNDETERMINED and are not analyzed.
+- The browser server handles one request at a time and limits each request body to 512 MiB; it binds only to loopback and is intended for local demos.

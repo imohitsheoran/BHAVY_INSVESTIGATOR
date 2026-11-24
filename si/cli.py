@@ -16,8 +16,16 @@ def investigate(elf,core,out,case=None):
 def main():
     ap=argparse.ArgumentParser(prog='si'); sub=ap.add_subparsers(dest='cmd',required=True)
     inv=sub.add_parser('investigate'); inv.add_argument('--elf',required=True); inv.add_argument('--core',required=True); inv.add_argument('--out',required=True)
+    gallery=sub.add_parser('gallery'); gallery.add_argument('--out',default='dist/')
+    serve=sub.add_parser('serve'); serve.add_argument('--port',type=int,default=8000)
     sub.add_parser('demo'); a=ap.parse_args()
     if a.cmd=='investigate': investigate(a.elf,a.core,a.out)
+    elif a.cmd=='gallery':
+        from .gallery import build_gallery
+        print(build_gallery(a.out))
+    elif a.cmd=='serve':
+        from .server import serve as serve_app
+        serve_app(port=a.port)
     else:
         print(BANNER); print('case | top hypothesis | status | ground truth | match?')
         root=Path('cases'); any_case=False
