@@ -25,8 +25,13 @@ def _cases(cases_dir: Path):
     return available
 
 
-def _page(cases, report=None, error=None):
+def _page(cases, report=None, error=None, source_cases=()):
     options = "".join(f'<option value="{html.escape(name, quote=True)}">{html.escape(name)}</option>' for name in cases)
+    if not cases:
+        options += "".join(f'<option disabled>{html.escape(name)} — build ELF/core pair on Linux first</option>' for name in source_cases)
+    notice = ("Built-in cases need generated ELF/core files. From the repository root on Linux x86-64, run "
+              "<code>python tools/build_cases.py</code>, then refresh this page." if not cases else
+              "Choose a generated case OR upload a matching ELF and core file.")
     result = ""
     if report is not None:
         result = '<h2>Investigation report</h2><iframe title="Investigation report" srcdoc="' + html.escape(report, quote=True) + '"></iframe>'
@@ -37,7 +42,7 @@ def _page(cases, report=None, error=None):
 <header><h1>Software Investigator</h1><p class="banner">{GALLERY_BANNER}</p></header><main>
 <p>Select a generated case or upload an ELF and core. Uploaded files are parsed as data and are never executed.</p>
 <form method="post" action="/investigate" enctype="multipart/form-data"><label for="case">Committed case</label><select id="case" name="case"><option value="">Choose a case</option>{options}</select>
-<p class="hint">Choose a case OR provide both files below.</p><label for="elf">ELF file</label><input id="elf" name="elf" type="file"><label for="core">Core file</label><input id="core" name="core" type="file"><br><button type="submit">Investigate</button></form>{result}</main></body></html>'''
+<p class="hint">{notice}</p><label for="elf">ELF executable</label><input id="elf" name="elf" type="file"><p class="hint">Linux x86-64 ELF executable (usually `.elf`; ET_EXEC or ET_DYN).</p><label for="core">Core dump</label><input id="core" name="core" type="file"><p class="hint">Matching Linux x86-64 ELF core (ET_CORE; often named `core` or `core.<pid>`). It must come from this exact executable.</p><br><button type="submit">Investigate</button></form>{result}</main></body></html>'''
 
 
 def make_handler(cases_dir: Path):
@@ -48,7 +53,8 @@ def make_handler(cases_dir: Path):
             if self.path not in ("/", "/index.html"):
                 self.send_error(404)
                 return
-            self._send(_page(_cases(cases_dir)))
+            source_cases = sorted(p.parent.name for p in cases_dir.glob("*/ground_truth.json"))
+            self._send(_page(_cases(cases_dir), source_cases=source_cases))
 
         def do_POST(self):
             if self.path != "/investigate":
@@ -95,15 +101,17 @@ def make_handler(cases_dir: Path):
                     else:
                         cases = _cases(cases_dir)
                         if not selected or selected not in cases:
-                            raise ValueError("Select an available case or upload both files.")
+                            raise ValueError("Select an available built case or upload both files. If built-in options are unavailable, run `python tools/build_cases.py` on Linux x86-64 and refresh.")
                         elf, core = cases[selected]
                         case_name = selected
                     with contextlib.redirect_stdout(io.StringIO()):
                         investigate(elf, core, temp / "report", case_name)
                     report_html = (temp / "report" / "report.html").read_text(encoding="utf-8")
-                self._send(_page(_cases(cases_dir), report=report_html))
+                self._send(_page(_cases(cases_dir), report=report_html,
+                                 source_cases=sorted(p.parent.name for p in cases_dir.glob("*/ground_truth.json"))))
             except Exception as exc:
-                self._send(_page(_cases(cases_dir), error=f"Investigation could not be completed: {exc}"), status=400)
+                self._send(_page(_cases(cases_dir), error=f"Investigation could not be completed: {exc}",
+                                 source_cases=sorted(p.parent.name for p in cases_dir.glob("*/ground_truth.json"))), status=400)
 
         def _send(self, body: str, status=200):
             payload = body.encode("utf-8")

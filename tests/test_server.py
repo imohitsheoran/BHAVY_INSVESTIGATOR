@@ -16,7 +16,10 @@ def test_server_upload_routes_artifacts_to_pipeline_without_execution(tmp_path, 
         return {}
 
     monkeypatch.setattr("si.server.investigate", pipeline)
-    server = HTTPServer(("127.0.0.1", 0), make_handler(tmp_path / "cases"))
+    cases_dir = tmp_path / "cases"
+    (cases_dir / "example").mkdir(parents=True)
+    (cases_dir / "example" / "ground_truth.json").write_text("{}", encoding="utf-8")
+    server = HTTPServer(("127.0.0.1", 0), make_handler(cases_dir))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     boundary = "si-test-boundary"
@@ -33,6 +36,8 @@ def test_server_upload_routes_artifacts_to_pipeline_without_execution(tmp_path, 
         with urlopen(request) as response:
             page = response.read().decode("utf-8")
         assert "pipeline report" in page
+        assert "example — build ELF/core pair on Linux first" in page
+        assert "Linux x86-64 ELF core (ET_CORE" in page
     finally:
         server.shutdown()
         server.server_close()

@@ -34,7 +34,7 @@ make test
 
 Open `dist/index.html` directly in a browser. The gallery uses only inline CSS and JavaScript and local report files; it makes no network calls.
 
-`python -m si serve` starts a local browser UI at `http://127.0.0.1:8000/`. It lets you choose an available case or upload both an ELF and core. Uploaded files are saved only in a temporary directory, passed to the existing parser/report pipeline as data, and removed when the request finishes. The server is stdlib-only and binds only to loopback.
+`python -m si serve` starts a local browser UI at `http://127.0.0.1:8000/`. It lets you choose an available case or upload both an ELF and core. Upload the Linux x86-64 ELF executable and its matching ELF core dump (`ET_CORE`, often named `core` or `core.<pid>`); Windows `.exe`/`.dmp` files are not supported. If the built-in case list is empty, generate its pairs on Linux with `python tools/build_cases.py`. Uploaded files are saved only in a temporary directory, passed to the existing parser/report pipeline as data, and removed when the request finishes. The server is stdlib-only and binds only to loopback.
 
 ## Artifact status
 
