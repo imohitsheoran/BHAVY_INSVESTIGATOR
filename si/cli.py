@@ -1,4 +1,5 @@
-import argparse,json,sys
+import argparse,json,sys,io
+from contextlib import redirect_stdout
 from pathlib import Path
 from .parser import parse
 from .analyzer import analyze
@@ -28,13 +29,26 @@ def main():
         serve_app(port=a.port)
     else:
         print(BANNER); print('case | top hypothesis | status | ground truth | match?')
-        root=Path('cases'); any_case=False
+        root=Path('cases'); any_case=False; missing=False; mismatch=False
         for truth in sorted(root.glob('*/ground_truth.json')):
             case=truth.parent; gt=json.loads(truth.read_text())
-            for elf in sorted((case/'build').glob('*.elf')):
+            elves=sorted((case/'build').glob('*.elf'))
+            if not elves:
+                print(f'{case.name} | unavailable | UNDETERMINED | {gt.get("expected_top_hypothesis")} | unavailable'); missing=True
+                continue
+            for elf in elves:
                 core=elf.with_suffix('.core')
-                if not core.exists(): print(f'{case.name}/{elf.stem} | — | MISSING CORE | {gt.get("expected_root_cause_category")} | unavailable'); continue
-                any_case=True; v=investigate(elf,core,Path('out')/case.name/elf.stem,case.name)
-                supported=[x for x in v['hypotheses'] if x['status']=='SUPPORTED']; top=supported[0]['hypothesis']['id'] if supported else 'None'; expected=gt.get('expected_top_hypothesis'); print(f'{case.name}/{elf.stem} | {top} | {"SUPPORTED" if supported else "UNDETERMINED"} | {expected} | {top==expected}')
-        if not any_case: print('No committed ELF/core cases found. Build and generate cores on Linux; see README.md.')
-if __name__=='__main__': main()
+                if not core.exists():
+                    print(f'{case.name}/{elf.stem} | unavailable | UNDETERMINED | {gt.get("expected_top_hypothesis")} | unavailable'); missing=True; continue
+                with redirect_stdout(io.StringIO()): v=investigate(elf,core,Path('out')/case.name/elf.stem,case.name)
+                any_case=True
+                supported=[x for x in v['hypotheses'] if x['status']=='SUPPORTED']
+                top=supported[0]['hypothesis']['id'] if supported else 'None'
+                status=supported[0]['status'] if supported else ('REFUTED' if any(x['status']=='REFUTED' for x in v['hypotheses']) else 'UNDETERMINED')
+                expected=gt.get('expected_top_hypothesis')
+                match=top==expected
+                print(f'{case.name}/{elf.stem} | {top} | {status} | {expected} | {match}')
+                mismatch = mismatch or not match
+        if not any_case: print('No generated real ELF/core pairs found. Build them on Linux with python tools/build_cases.py.')
+        if missing or not any_case or mismatch: return 1
+if __name__=='__main__': raise SystemExit(main())
