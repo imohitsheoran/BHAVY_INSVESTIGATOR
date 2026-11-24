@@ -1,0 +1,1 @@
+{"expected_root_cause_category":"write to read-only string literal","expected_faulting_line_description":"store through string literal pointer","expected_top_hypothesis":"H-PERM"}

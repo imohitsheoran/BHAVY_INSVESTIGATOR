@@ -1,0 +1,1 @@
+{"expected_root_cause_category":"stack exhaustion from unbounded recursion","expected_faulting_line_description":"recursive call in recurse","expected_top_hypothesis":"H-STACK"}
